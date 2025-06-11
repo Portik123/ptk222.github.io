@@ -1,0 +1,457 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portik - Мастер NPC</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&family=Roboto:wght@400;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        :root {
+            --bg-primary: #1e1e2e;
+            --bg-secondary: #2a2a3e;
+            --accent-color: #ffcc00;
+            --text-primary: #e0e0ff;
+            --text-secondary: #c0c0e0;
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #f0f0f5;
+            --bg-secondary: #e0e0e8;
+            --accent-color: #ff9900;
+            --text-primary: #2a2a3e;
+            --text-secondary: #4a4a5a;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+            display: flex;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .sidebar {
+            width: 80px;
+            background: var(--bg-secondary);
+            position: fixed;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+            transition: width 0.3s;
+        }
+
+        .sidebar:hover {
+            width: 250px;
+        }
+
+        .sidebar a {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-size: 1.2em;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            transition: color 0.3s, background 0.3s;
+        }
+
+        .sidebar a:hover {
+            color: #ffdd33;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+
+        .sidebar a span {
+            margin-left: 10px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .sidebar:hover a span {
+            opacity: 1;
+        }
+
+        .content {
+            margin-left: 80px;
+            padding: 20px;
+            width: calc(100% - 80px);
+            transition: margin-left 0.3s;
+        }
+
+        .sidebar:hover ~ .content {
+            margin-left: 250px;
+        }
+
+        .theme-toggle {
+            background: var(--bg-secondary);
+            border: none;
+            color: var(--accent-color);
+            padding: 10px;
+            cursor: pointer;
+            font-size: 1.2em;
+            margin-top: 20px;
+            transition: color 0.3s, background 0.3s;
+        }
+
+        .theme-toggle:hover {
+            color: #ffdd33;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .hero {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 40px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            margin-bottom: 30px;
+            animation: fadeIn 1s ease-out;
+        }
+
+        .hero-img {
+            width: 300px;
+            height: auto;
+            border-radius: 10px;
+            animation: bounce 2s ease-in-out infinite;
+            box-shadow: 0 0 20px rgba(var(--accent-color), 0.5);
+            transition: box-shadow 0.3s;
+        }
+
+        .hero-img:hover {
+            box-shadow: 0 0 30px rgba(var(--accent-color), 0.7);
+        }
+
+        .hero-text {
+            max-width: 600px;
+        }
+
+        .hero h1 {
+            font-size: 2.8em;
+            color: var(--accent-color);
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px rgba(var(--accent-color), 0.7);
+            transition: color 0.3s;
+        }
+
+        .hero p {
+            font-size: 1.3em;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, var(--accent-color), #ff9900);
+            color: var(--bg-primary);
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(var(--accent-color), 0.8);
+        }
+
+        .section {
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            margin-bottom: 20px;
+            animation: slideUp 1s ease-out;
+        }
+
+        .section h2 {
+            font-size: 2.2em;
+            color: var(--accent-color);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .section p {
+            font-size: 1.1em;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 0 15px rgba(var(--accent-color), 0.5);
+        }
+
+        .card h3 {
+            font-size: 1.4em;
+            color: var(--accent-color);
+            margin-bottom: 10px;
+        }
+
+        .card a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .card a:hover {
+            color: var(--accent-color);
+        }
+
+        .lang-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1001;
+            display: flex;
+            gap: 10px;
+        }
+
+        .lang-toggle button {
+            background: var(--bg-secondary);
+            border: 1px solid var(--accent-color);
+            padding: 8px 20px;
+            color: var(--accent-color);
+            cursor: pointer;
+            border-radius: 20px;
+            font-weight: 600;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .lang-toggle button:hover {
+            background: var(--accent-color);
+            color: var(--bg-primary);
+        }
+
+        footer {
+            background: var(--bg-secondary);
+            padding: 20px;
+            text-align: center;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--accent-color);
+            margin-left: 80px;
+            width: calc(100% - 80px);
+            transition: width 0.3s, margin-left 0.3s;
+        }
+
+        .sidebar:hover ~ footer {
+            margin-left: 250px;
+            width: calc(100% - 250px);
+        }
+
+        canvas#particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .content, footer { margin-left: 0; width: 100%; }
+            .hero { flex-direction: column; text-align: center; padding: 20px; }
+            .hero-img { width: 250px; margin-bottom: 20px; }
+            .hero h1 { font-size: 2.2em; }
+            .hero p { font-size: 1.1em; }
+            .section h2 { font-size: 1.8em; }
+            .card { padding: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <a href="#hero"><span>Главная</span></a>
+        <a href="#about"><span>Обо мне</span></a>
+        <a href="#contacts"><span>Контакты</span></a>
+        <a href="https://boosty.to/portikptk" target="_blank"><span>Поддержать</span></a>
+        <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+    </div>
+    <div class="content">
+        <div class="lang-toggle">
+            <button onclick="toggleLanguage('ru')">Русский</button>
+            <button onclick="toggleLanguage('en')">English</button>
+        </div>
+
+        <section class="hero" id="hero">
+            <img src="https://lh4.googleusercontent.com/3iPxygKAXK7ko-ux1SOzSShVJevv69_D9-ExpCEqHfvLjYs_epl744R7yRdeOcO54zy0yUxPmyiz3AwIHtXy-C_gHeAN92JYAeummqfMpLUArcNjNYJhpsP4bmZbCA40iSuetDPghkQ=w1280" alt="Portik Avatar" class="hero-img">
+            <div class="hero-text">
+                <h1>Portik</h1>
+                <p class="ru">Я Portik, создатель уникальных NPC-модов для Garry's Mod. Мои работы добавляют в игру новые персонажи и приключения. Поддержи меня на Boosty!</p>
+                <p class="en" style="display: none">I’m Portik, creator of unique NPC mods for Garry's Mod. My works bring new characters and adventures to the game. Support me on Boosty!</p>
+                <button class="btn" onclick="window.location.href='https://boosty.to/portikptk'">Поддержать</button>
+            </div>
+        </section>
+
+        <section class="section" id="about">
+            <h2>Обо мне</h2>
+            <p class="ru">Я Portik, энтузиаст моддинга для Garry's Mod. Мои NPC-моды вдохновляют сообщество и расширяют возможности игры. Присоединяйся на Boosty!</p>
+            <p class="en" style="display: none">I’m Portik, a passionate modder for Garry's Mod. My NPC mods inspire the community and expand the game’s possibilities. Join me on Boosty!</p>
+        </section>
+
+        <section class="section" id="contacts">
+            <h2>Контакты</h2>
+            <div class="cards">
+                <div class="card">
+                    <h3>Telegram</h3>
+                    <a href="https://t.me/portikbogdansudartem" target="_blank">@portikbogdansudartem</a>
+                </div>
+                <div class="card">
+                    <h3>Discord</h3>
+                    <a href="https://discord.com/users/portik_yt" target="_blank">portik_yt</a>
+                </div>
+                <div class="card">
+                    <h3>YouTube</h3>
+                    <a href="https://www.youtube.com/@SHARKTime" target="_blank">@SHARKTime</a>
+                </div>
+                <div class="card">
+                    <h3>Boosty</h3>
+                    <a href="https://boosty.to/portikptk" target="_blank">portikptk</a>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p class="ru">© 2025 Portik. Все права защищены.</p>
+            <p class="en" style="display: none">© 2025 Portik. All rights reserved.</p>
+        </footer>
+    </div>
+    <canvas id="particles"></canvas>
+
+    <script>
+        function toggleLanguage(lang) {
+            document.querySelectorAll('.ru, .en').forEach(el => {
+                el.style.display = el.classList.contains(lang) ? 'block' : 'none';
+            });
+        }
+
+        function toggleTheme() {
+            const body = document.body;
+            if (body.getAttribute('data-theme') === 'light') {
+                body.setAttribute('data-theme', '');
+                document.querySelector('.theme-toggle').textContent = '🌙';
+            } else {
+                body.setAttribute('data-theme', 'light');
+                document.querySelector('.theme-toggle').textContent = '☀️';
+            }
+        }
+
+        const canvas = document.getElementById('particles');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const particles = [];
+        const particleCount = 100;
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 1;
+                this.speedX = Math.random() * 0.5 - 0.25;
+                this.speedY = Math.random() * 0.5 - 0.25;
+                this.color = `hsl(${Math.random() * 60 + 30}, 70%, 50%)`;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+            }
+            draw() { ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill(); }
+        }
+
+        function initParticles() { for (let i = 0; i < particleCount; i++) particles.push(new Particle()); }
+        function animateParticles() { ctx.clearRect(0, 0, canvas.width, canvas.height); particles.forEach(p => { p.update(); p.draw(); }); requestAnimationFrame(animateParticles); }
+        initParticles(); animateParticles();
+        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+    </script>
+</body>
+</html>
